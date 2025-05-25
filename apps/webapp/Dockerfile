@@ -27,75 +27,75 @@ RUN SKIP_ENV_VALIDATION=true npx next build 2>/dev/null || \
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
-# Create the start script as a separate file with proper permissions
-COPY <<'EOF' /app/start.sh
-#!/bin/sh
-echo "=== Neuronpedia Webapp Starting ==="
-echo "Available files:"
-ls -la
-echo "Node version: $(node --version)"
-echo "NPM version: $(npm --version)"
-echo ""
-
-# Check if build failed during Docker build
-if [ -f ".build-failed" ]; then
-    echo "Build was skipped during Docker build, building now..."
-    
-    # Generate Prisma client if needed
-    if [ ! -d "node_modules/@prisma/client" ]; then
-        echo "Generating Prisma client..."
-        npx prisma generate || echo "Prisma generate failed"
-    fi
-    
-    # Build the application
-    echo "Building Next.js application..."
-    SKIP_ENV_VALIDATION=true npx next build || echo "Build failed, will try to start anyway"
-    rm -f .build-failed
-fi
-
-# Database setup at runtime (only if env vars are available)
-if [ ! -z "$DATABASE_URL" ] || [ ! -z "$POSTGRES_PRISMA_URL" ]; then
-    echo "Database environment variables found, setting up database..."
-    npx prisma db push || echo "Database setup failed (continuing anyway)"
-else
-    echo "No database environment variables found, skipping database setup"
-fi
-
-# Start the application with multiple fallback methods
-echo "Starting the application..."
-
-if [ -f "package.json" ]; then
-    echo "Package.json found, trying start methods..."
-    
-    # Try npm start first
-    if npm run start 2>/dev/null; then
-        echo "Started with npm start"
-    # Try npx next start
-    elif npx next start 2>/dev/null; then
-        echo "Started with npx next start"
-    # Try npm dev
-    elif npm run dev 2>/dev/null; then
-        echo "Started with npm dev"
-    # Try npx next dev
-    elif npx next dev 2>/dev/null; then
-        echo "Started with npx next dev"
-    # Try direct node commands
-    elif node server.js 2>/dev/null; then
-        echo "Started with node server.js"
-    elif node index.js 2>/dev/null; then
-        echo "Started with node index.js"
-    elif node app.js 2>/dev/null; then
-        echo "Started with node app.js"
-    else
-        echo "Could not determine start method. Available scripts:"
-        npm run 2>/dev/null || echo "No npm scripts available"
-        echo "Keeping container alive for debugging..."
-        sleep 3600
-    fi
-else
-    echo "No package.json found, keeping container alive for debugging"
-    sleep 3600
-fi
+# Create the start script using a simpler method
+RUN cat > /app/start.sh << 'EOF'\n\
+#!/bin/sh\n\
+echo "=== Neuronpedia Webapp Starting ==="\n\
+echo "Available files:"\n\
+ls -la\n\
+echo "Node version: $(node --version)"\n\
+echo "NPM version: $(npm --version)"\n\
+echo ""\n\
+\n\
+# Check if build failed during Docker build\n\
+if [ -f ".build-failed" ]; then\n\
+    echo "Build was skipped during Docker build, building now..."\n\
+    \n\
+    # Generate Prisma client if needed\n\
+    if [ ! -d "node_modules/@prisma/client" ]; then\n\
+        echo "Generating Prisma client..."\n\
+        npx prisma generate || echo "Prisma generate failed"\n\
+    fi\n\
+    \n\
+    # Build the application\n\
+    echo "Building Next.js application..."\n\
+    SKIP_ENV_VALIDATION=true npx next build || echo "Build failed, will try to start anyway"\n\
+    rm -f .build-failed\n\
+fi\n\
+\n\
+# Database setup at runtime (only if env vars are available)\n\
+if [ ! -z "$DATABASE_URL" ] || [ ! -z "$POSTGRES_PRISMA_URL" ]; then\n\
+    echo "Database environment variables found, setting up database..."\n\
+    npx prisma db push || echo "Database setup failed (continuing anyway)"\n\
+else\n\
+    echo "No database environment variables found, skipping database setup"\n\
+fi\n\
+\n\
+# Start the application with multiple fallback methods\n\
+echo "Starting the application..."\n\
+\n\
+if [ -f "package.json" ]; then\n\
+    echo "Package.json found, trying start methods..."\n\
+    \n\
+    # Try npm start first\n\
+    if npm run start 2>/dev/null; then\n\
+        echo "Started with npm start"\n\
+    # Try npx next start\n\
+    elif npx next start 2>/dev/null; then\n\
+        echo "Started with npx next start"\n\
+    # Try npm dev\n\
+    elif npm run dev 2>/dev/null; then\n\
+        echo "Started with npm dev"\n\
+    # Try npx next dev\n\
+    elif npx next dev 2>/dev/null; then\n\
+        echo "Started with npx next dev"\n\
+    # Try direct node commands\n\
+    elif node server.js 2>/dev/null; then\n\
+        echo "Started with node server.js"\n\
+    elif node index.js 2>/dev/null; then\n\
+        echo "Started with node index.js"\n\
+    elif node app.js 2>/dev/null; then\n\
+        echo "Started with node app.js"\n\
+    else\n\
+        echo "Could not determine start method. Available scripts:"\n\
+        npm run 2>/dev/null || echo "No npm scripts available"\n\
+        echo "Keeping container alive for debugging..."\n\
+        sleep 3600\n\
+    fi\n\
+else\n\
+    echo "No package.json found, keeping container alive for debugging"\n\
+    sleep 3600\n\
+fi\n\
 EOF
 
 # Make the script executable and set proper ownership
